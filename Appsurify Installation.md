@@ -1,4 +1,3 @@
-
 # Installation guide
 
 *CentOS 7*
@@ -88,6 +87,26 @@ Yes | ENVIRONMENT | GITHUB_SECRET_KEY | '***************************************
 
 ##### Detailed information on the use of environment variables when creating a container can be found [here](https://docs.docker.com/engine/reference/commandline/create/).
 
+#### Update docker image
+
+**Stop and remove current containers**
+Stop web and worker containers
+```bash
+docker stop testbrain_{web,worker}
+
+```
+Remove web and worker containers
+```bash
+docker rm testbrain_{web,worker}
+
+```
+Remove web and worker image from docker daemon storage
+```bash
+docker rmi testbrain_{web,worker}
+
+```
+After these actions, you can repeat the loading of the image and the creation of containers based on the new image.
+
 #### WEB Panel Container
 
 **Create container:**
@@ -125,7 +144,15 @@ docker exec testbrain_web python manage.py auto_createsuperuser
 docker exec -it testbrain_web python manage.py createorganization
 
 ```
+* command `docker exec testbrain_web python manage.py auto_createsuperuser` add **superuser** with default credentials. Login: admin Password: adminadmin
 
+**If run with mount src directory**
+Need copy frontent files to project path.
+```bash
+docker exec testbrain_web cp /app/frontend/index.html /app/www/templates/
+docker exec testbrain_web cp -r /app/frontend/. /app/www/static
+
+```
 
 ####  WORKER Contaner
 
@@ -152,6 +179,92 @@ docker create --name testbrain_worker \
 **Start container:**
 
 ```bash
+docker start testbrain_worker
+
+```
+
+
+#### All in One
+**Example of starting all services in the Docker environment**
+
+```bash
+# Create postgres service with alocated 1GB memory and connect(mount) directory for postgreSQL data storage.
+docker create --name='testbrain_postgres' \
+--restart=always \
+--memory 1g \
+--cpus 2 \
+-v $(pwd)/var/lib/postgresql/data:/var/lib/postgresql/data \
+-t postgres:10.3 \
+postgres
+
+docker start testbrain_postgres
+docker exec -it testbrain_postgres createdb -h localhost -U postgres testbrain
+
+
+
+# Create rabbitMQ service with allocated 512MB memory and connect(mount) directory for pesistent data storage.
+docker create --name='testbrain_rabbitmq' \
+--restart=always \
+--memory 512m \
+--cpus 1 \
+-v $(pwd)/var/lib/rabbitmq:/var/lib/rabbitmq \
+-t rabbitmq:3.7.14-management
+
+docker start testbrain_rabbitmq
+
+
+
+
+# Load testbrain image to docker
+docker load -i testbrain.tar
+
+# Create testbrain WEB container
+
+docker create --name testbrain_web \
+-p 80:80 \
+--restart=always \
+--link testbrain_postgres:testbrain_postgres \
+--link testbrain_rabbitmq:testbrain_rabbitmq \
+-e ENV_NAME='web' \
+-e RDS_DB_NAME=testbrain \
+-e RDS_USERNAME=postgres \
+-e RDS_PASSWORD='' \
+-e RDS_HOSTNAME=testbrain_postgres \
+-e BROKER_URL='amqp://guest:guest@testbrain_rabbitmq:5672//' \
+-e DJANGO_SETTINGS_MODULE=testbrain.settings.standalone \
+-e BASE_SITE_NAME='Appsurify' \
+-e BASE_SITE_DOMAIN='domain.intranet' \
+-e BASE_ORG_DOMAIN='domain.intranet' \
+-v $(pwd)/var/storage:/app/efs \
+-t testbrain:latest
+
+docker start testbrain_web
+
+# If database is empty
+docker exec testbrain_web python manage.py migrate --noinput
+docker exec testbrain_web python manage.py auto_createsuperuser
+docker exec -it testbrain_web python manage.py createorganization
+
+
+# Create testbrain WORKER container
+
+docker create --name testbrain_worker \
+--restart=always \
+--link testbrain_postgres:testbrain_postgres \
+--link testbrain_rabbitmq:testbrain_rabbitmq \
+-e ENV_NAME='worker' \
+-e RDS_DB_NAME=testbrain \
+-e RDS_USERNAME=postgres \
+-e RDS_PASSWORD='' \
+-e RDS_HOSTNAME=testbrain_postgres \
+-e BROKER_URL='amqp://guest:guest@testbrain_rabbitmq:5672//' \
+-e DJANGO_SETTINGS_MODULE=testbrain.settings.standalone \
+-e BASE_SITE_NAME='Appsurify' \
+-e BASE_SITE_DOMAIN='domain.intranet' \
+-e BASE_ORG_DOMAIN='domain.intranet' \
+-v $(pwd)/var/storage:/app/efs \
+-t testbrain:latest
+
 docker start testbrain_worker
 
 ```
