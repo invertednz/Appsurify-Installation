@@ -54,7 +54,6 @@ docker load -i testbrain.tar
 
 #### Create Docker Container from builded image
 
-Docker image can be downloaded from - https://drive.google.com/file/d/1jMBN1guWAE6n25rL0IAzSc_xlSLaojIT/view?usp=sharing
 
 A list of all the environment variables needed to run the project. 
 When working through Docker, it is possible to change them when creating a container before launching. 
