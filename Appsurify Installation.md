@@ -4,7 +4,7 @@
 
 3 Server setup:
 - PostgreSQL - min CPU-2 GB RAM- 8GB SSD -100GB
-- RabbitMQ - min CPU-1 GB RAM-512 HDD-40GB
+- RabbitMQ - min CPU-1 GB RAM-1GB SSD-40GB
 - WEB+WORKERs - min CPU-4 GB RAM-8GB SSD- 100GB'
 
 *CentOS 7*
